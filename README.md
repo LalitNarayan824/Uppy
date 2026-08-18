@@ -22,8 +22,8 @@ A self-hosted uptime monitoring service that periodically checks the health of w
 | Language | TypeScript |
 | Backend | Node.js + Express |
 | ORM | Drizzle |
-| Database | PostgreSQL |
-| Job Queue | BullMQ (Redis-backed) |
+| Database | PostgreSQL (Neon) |
+| Job Queue | BullMQ + Redis (Upstash) |
 | Frontend | Next.js + Tailwind |
 | Charts | Recharts |
 | Alerts | Discord webhook + Resend (email) |
@@ -34,15 +34,15 @@ A self-hosted uptime monitoring service that periodically checks the health of w
 ### Prerequisites
 
 - Node.js 18+
-- PostgreSQL
-- Redis
+- Neon account (free tier)
+- Upstash account (free tier)
 
 ### Setup
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/pulsecheck.git
-   cd pulsecheck
+   git clone https://github.com/yourusername/uppy.git
+   cd uppy
    ```
 
 2. Install dependencies:
@@ -53,13 +53,14 @@ A self-hosted uptime monitoring service that periodically checks the health of w
 3. Set up environment variables:
    ```bash
    cp .env.example .env
-   # Edit .env with your database, Redis, and Discord webhook URLs
+   # Edit .env with your Neon database URL, Upstash Redis URL, etc.
    ```
 
 4. Set up the database:
-   ```bash
-   psql -U postgres -d pulsecheck -f docs/database-schema.sql
-   ```
+   - Create a Neon account at neon.tech
+   - Create a new project
+   - Copy the connection string to .env
+   - Run: `npm run db:push`
 
 5. Start the development servers:
    ```bash
@@ -132,21 +133,63 @@ Uppy/
 
 ## Deployment
 
-### Railway
+### Architecture
 
-1. Create a Railway account
-2. Add a new project
-3. Add PostgreSQL and Redis services
-4. Deploy the API, worker, and web services
-5. Set environment variables in Railway dashboard
+| Service | What runs | Why |
+|---------|-----------|-----|
+| **Vercel** | Next.js Frontend | Best DX for Next.js, free |
+| **Render** | Express API + BullMQ Worker | Free tier, persistent server |
+| **Neon** | PostgreSQL | Free tier, serverless |
+| **Upstash** | Redis | Free tier, serverless |
 
-### Render
+**Total cost:** $0 (all free tiers)
 
-1. Create a Render account
-2. Create a PostgreSQL database
-3. Create a Redis instance
-4. Deploy the API, worker, and web as separate services
-5. Set environment variables in Render dashboard
+### Why This Architecture
+
+- **Vercel** is perfect for Next.js (auto-deploys, previews, edge functions)
+- **Render** runs persistent Node.js servers (API + Worker) — needed for BullMQ
+- **Neon + Upstash** are serverless (no local database/Redis needed)
+- **No credit card required** for any service
+
+### Deploy Steps
+
+1. **Push to GitHub**
+   ```bash
+   git add .
+   git commit -m "Initial commit"
+   git remote add origin https://github.com/yourusername/uppy.git
+   git push -u origin main
+   ```
+
+2. **Deploy Frontend (Vercel)**
+   - Go to vercel.com → Import Git Repository
+   - Select your GitHub repo
+   - Framework Preset: Next.js
+   - Root Directory: `src/web`
+   - Add environment variables (from .env.example)
+   - Deploy
+
+3. **Deploy API + Worker (Render)**
+   - Go to render.com → New Web Service
+   - Connect GitHub repo
+   - Name: `uppy-api`
+   - Runtime: Node
+   - Build Command: `npm install && npm run build`
+   - Start Command: `npm run start:api`
+   - Add environment variables
+   - Deploy
+
+4. **Set up Neon**
+   - Go to neon.tech → Create project
+   - Copy connection string to .env
+   - Run `npm run db:push` locally to create tables
+
+5. **Set up Upstash**
+   - Go to upstash.com → Create Redis database
+   - Copy URL to .env
+
+6. **Run Seed Script** (optional)
+   - After deploy, run seed script to populate demo data
 
 ## License
 

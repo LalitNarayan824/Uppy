@@ -128,6 +128,69 @@
 | **User-scoped monitors** | Each user sees only their own monitors (user_id FK) |
 | **Cascading deletes** | Deleting user removes their monitors, checks, and incidents |
 
+## Deployment Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         PRODUCTION                               │
+│                                                                  │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │                    GITHUB REPO                           │    │
+│  │  - Source code                                           │    │
+│  │  - Auto-deploy on push                                  │    │
+│  └───────────────────────┬─────────────────────────────────┘    │
+│                          │                                       │
+│          ┌───────────────┴───────────────┐                      │
+│          ▼                               ▼                      │
+│  ┌───────────────────┐           ┌───────────────────┐          │
+│  │      VERCEL       │           │      RENDER       │          │
+│  │                   │           │                   │          │
+│  │  ┌─────────────┐  │           │  ┌─────────────┐  │          │
+│  │  │  Next.js    │  │           │  │  Express    │  │          │
+│  │  │  Frontend   │  │           │  │  API        │  │          │
+│  │  │  (port 3000)│  │           │  │  (port 3001)│  │          │
+│  │  └─────────────┘  │           │  └─────────────┘  │          │
+│  │                   │           │                   │          │
+│  │  Features:        │           │  ┌─────────────┐  │          │
+│  │  - Dashboard      │           │  │  BullMQ     │  │          │
+│  │  - Monitor list   │           │  │  Worker     │  │          │
+│  │  - Monitor detail │           │  │  (60s jobs) │  │          │
+│  │  - Auth pages     │           │  └─────────────┘  │          │
+│  └─────────┬─────────┘           └─────────┬─────────┘          │
+│            │                               │                     │
+│            └───────────────┬───────────────┘                    │
+│                            │                                     │
+│                            ▼                                     │
+│  ┌─────────────────────────────────────────────────────────┐    │
+│  │                    EXTERNAL SERVICES                      │    │
+│  │                                                          │    │
+│  │  ┌──────────────┐    ┌──────────────┐    ┌────────────┐ │    │
+│  │  │    NEON      │    │   UPSTASH    │    │  MONITORED │ │    │
+│  │  │  PostgreSQL  │    │    Redis     │    │  SERVICES  │ │    │
+│  │  │  (serverless)│    │  (serverless)│    │            │ │    │
+│  │  └──────────────┘    └──────────────┘    └────────────┘ │    │
+│  │                                                          │    │
+│  │  ┌──────────────────────────────────────────────────┐   │    │
+│  │  │           DISCORD WEBHOOK + EMAIL (Resend)        │   │    │
+│  │  │    Sends alerts on up→down / down→up transitions  │   │    │
+│  │  └──────────────────────────────────────────────────┘   │    │
+│  └─────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Why This Architecture
+
+| Service | Choice | Reason |
+|---------|--------|--------|
+| **Frontend** | Vercel | Best DX for Next.js, free tier, auto-deploys |
+| **API + Worker** | Render | Free tier, persistent server (needed for BullMQ) |
+| **Database** | Neon | Serverless PostgreSQL, free tier |
+| **Redis** | Upstash | Serverless Redis, free tier |
+
+**Key insight:** BullMQ requires a persistent server (not serverless). Vercel is serverless, so the API + Worker must run on Render.
+
+**Total cost:** $0 (all free tiers, no credit card required)
+
 ## Component Responsibilities
 
 | Component | Responsibility |

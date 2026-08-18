@@ -1,0 +1,50 @@
+{
+  "name": "uppy",
+  "version": "1.0.0",
+  "description": "A self-hosted uptime monitoring service that periodically checks the health of web services, tracks response times and incidents, and alerts on status changes.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "dev:api": "tsx watch src/api/index.ts",
+    "dev:worker": "tsx watch src/worker/index.ts",
+    "dev:web": "cd src/web && npm run dev",
+    "db:generate": "drizzle-kit generate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LalitNarayan824/Uppy.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/LalitNarayan824/Uppy/issues"
+  },
+  "homepage": "https://github.com/LalitNarayan824/Uppy#readme",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "bullmq": "^6.1.2",
+    "dotenv": "^17.4.2",
+    "drizzle-orm": "^0.45.2",
+    "express": "^5.2.1",
+    "ioredis": "^6.0.0",
+    "jsonwebtoken": "^9.0.3",
+    "postgres": "^3.4.9",
+    "resend": "^6.20.0",
+    "uuid": "^14.0.1"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/uuid": "^10.0.0",
+    "drizzle-kit": "^0.31.10",
+    "tsx": "^4.23.12",
+    "typescript": "^7.0.2"
+  }
+}
