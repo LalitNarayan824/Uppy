@@ -11,8 +11,8 @@ Self-hosted uptime monitoring service. Checks web services periodically, tracks 
 - **Language:** TypeScript (strict mode)
 - **Backend:** Express.js
 - **ORM:** Drizzle (not Prisma)
-- **Database:** PostgreSQL
-- **Job Queue:** BullMQ (Redis-backed)
+- **Database:** PostgreSQL (Neon free tier)
+- **Job Queue:** BullMQ + Redis (Upstash free tier)
 - **Frontend:** Next.js + Tailwind + Recharts
 - **Auth:** JWT (7-day expiry, no refresh tokens in v1)
 - **Alerts:** Discord webhook + Resend email
@@ -27,6 +27,22 @@ Three separate processes — not a monolith:
 3. **Web** (`src/web/`) — Next.js dashboard, port 3000
 
 All three need to run simultaneously in dev. Worker depends on Redis; API depends on Postgres.
+
+## Deployment (Decided)
+
+| Service | What runs | Provider |
+|---------|-----------|----------|
+| Frontend | Next.js | Vercel |
+| API + Worker | Express + BullMQ | Render |
+| Database | PostgreSQL | Neon |
+| Redis | Upstash | Upstash |
+
+**Why:**
+- Vercel: Best DX for Next.js, free tier, auto-deploys
+- Render: Free tier, persistent server (needed for BullMQ)
+- Neon: Serverless PostgreSQL, free tier
+- Upstash: Serverless Redis, free tier
+- No credit card required for any service
 
 ## Dev Commands (Planned)
 

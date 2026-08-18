@@ -82,6 +82,12 @@ cp .env.example .env
 # Edit .env with actual values
 ```
 
+**Required services (free tier):**
+- **Neon** (PostgreSQL): Sign up at neon.tech, create project, copy connection string
+- **Upstash** (Redis): Sign up at upstash.com, create Redis database, copy URL
+- **Discord** (optional): Create webhook in server settings
+- **Resend** (optional): Sign up at resend.com for email alerts
+
 ### Verification
 
 - [ ] `npm init -y` completes
@@ -832,9 +838,53 @@ Create `src/api/seed.ts` with real public URLs:
 - Test alerting: add a failing URL → verify Discord/email alerts
 - Test incident detection: verify 3 consecutive failures trigger incident
 
-### Step 6.3: Deploy to Railway/Render
+### Step 6.3: Deploy to Production
 
-Follow deployment guide in README.md
+**Deployment Strategy:**
+
+| Service | What runs | Provider |
+|---------|-----------|----------|
+| Frontend | Next.js | Vercel |
+| API + Worker | Express + BullMQ | Render |
+| Database | PostgreSQL | Neon |
+| Redis | Upstash | Upstash |
+
+**Deploy Steps:**
+
+1. **Push to GitHub**
+   ```bash
+   git add .
+   git commit -m "Initial commit"
+   git remote add origin https://github.com/yourusername/uppy.git
+   git push -u origin main
+   ```
+
+2. **Deploy Frontend (Vercel)**
+   - Go to vercel.com → Import Git Repository
+   - Select GitHub repo
+   - Framework: Next.js
+   - Root Directory: `src/web`
+   - Add env vars (from .env.example)
+   - Deploy
+
+3. **Deploy API + Worker (Render)**
+   - Go to render.com → New Web Service
+   - Connect GitHub repo
+   - Name: `uppy-api`
+   - Runtime: Node
+   - Build Command: `npm install && npm run build`
+   - Start Command: `npm run start:api`
+   - Add env vars
+   - Deploy
+
+4. **Set up Neon**
+   - Go to neon.tech → Create project
+   - Copy connection string to env vars
+   - Run `npm run db:push` locally
+
+5. **Set up Upstash**
+   - Go to upstash.com → Create Redis database
+   - Copy URL to env vars
 
 ---
 
