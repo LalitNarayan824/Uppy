@@ -7,8 +7,10 @@ import { authenticate, AuthRequest } from '../middleware/auth';
 const router = Router();
 
 router.get('/:id/uptime', authenticate, async (req: AuthRequest, res) => {
+  const monitorId = req.params.id as string;
+
   const [monitor] = await db.select().from(monitors).where(
-    and(eq(monitors.id, req.params.id), eq(monitors.userId, req.userId!))
+    and(eq(monitors.id, monitorId), eq(monitors.userId, req.userId!))
   );
 
   if (!monitor) {
@@ -28,14 +30,14 @@ router.get('/:id/uptime', authenticate, async (req: AuthRequest, res) => {
       const totalChecks = await db.select({ count: count() })
         .from(checks)
         .where(and(
-          eq(checks.monitorId, req.params.id),
+          eq(checks.monitorId, monitorId),
           gte(checks.checkedAt, since)
         ));
 
       const failedChecks = await db.select({ count: count() })
         .from(checks)
         .where(and(
-          eq(checks.monitorId, req.params.id),
+          eq(checks.monitorId, monitorId),
           eq(checks.isFailure, true),
           gte(checks.checkedAt, since)
         ));
