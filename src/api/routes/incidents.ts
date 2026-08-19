@@ -7,8 +7,10 @@ import { authenticate, AuthRequest } from '../middleware/auth';
 const router = Router();
 
 router.get('/:id/incidents', authenticate, async (req: AuthRequest, res) => {
+  const monitorId = req.params.id as string;
+
   const [monitor] = await db.select().from(monitors).where(
-    and(eq(monitors.id, req.params.id), eq(monitors.userId, req.userId!))
+    and(eq(monitors.id, monitorId), eq(monitors.userId, req.userId!))
   );
 
   if (!monitor) {
@@ -18,7 +20,7 @@ router.get('/:id/incidents', authenticate, async (req: AuthRequest, res) => {
   const limit = parseInt(req.query.limit as string) || 50;
 
   const monitorIncidents = await db.select().from(incidents)
-    .where(eq(incidents.monitorId, req.params.id))
+    .where(eq(incidents.monitorId, monitorId))
     .orderBy(desc(incidents.startedAt))
     .limit(limit);
 

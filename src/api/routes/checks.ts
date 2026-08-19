@@ -7,8 +7,10 @@ import { authenticate, AuthRequest } from '../middleware/auth';
 const router = Router();
 
 router.get('/:id/checks', authenticate, async (req: AuthRequest, res) => {
+  const monitorId = req.params.id as string;
+
   const [monitor] = await db.select().from(monitors).where(
-    and(eq(monitors.id, req.params.id), eq(monitors.userId, req.userId!))
+    and(eq(monitors.id, monitorId), eq(monitors.userId, req.userId!))
   );
 
   if (!monitor) {
@@ -19,7 +21,7 @@ router.get('/:id/checks', authenticate, async (req: AuthRequest, res) => {
   const offset = parseInt(req.query.offset as string) || 0;
 
   const monitorChecks = await db.select().from(checks)
-    .where(eq(checks.monitorId, req.params.id))
+    .where(eq(checks.monitorId, monitorId))
     .orderBy(desc(checks.checkedAt))
     .limit(limit)
     .offset(offset);

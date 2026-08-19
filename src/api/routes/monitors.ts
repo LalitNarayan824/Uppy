@@ -28,8 +28,10 @@ router.post('/', authenticate, async (req: AuthRequest, res) => {
 });
 
 router.get('/:id', authenticate, async (req: AuthRequest, res) => {
+  const monitorId = req.params.id as string;
+
   const [monitor] = await db.select().from(monitors).where(
-    and(eq(monitors.id, req.params.id), eq(monitors.userId, req.userId!))
+    and(eq(monitors.id, monitorId), eq(monitors.userId, req.userId!))
   );
 
   if (!monitor) {
@@ -39,16 +41,41 @@ router.get('/:id', authenticate, async (req: AuthRequest, res) => {
   res.json(monitor);
 });
 
-router.delete('/:id', authenticate, async (req: AuthRequest, res) => {
+router.put('/:id', authenticate, async (req: AuthRequest, res) => {
+  const monitorId = req.params.id as string;
+  const { name, url } = req.body;
+
+  if (!name || !url) {
+    return res.status(400).json({ error: 'Name and URL required' });
+  }
+
   const [monitor] = await db.select().from(monitors).where(
-    and(eq(monitors.id, req.params.id), eq(monitors.userId, req.userId!))
+    and(eq(monitors.id, monitorId), eq(monitors.userId, req.userId!))
   );
 
   if (!monitor) {
     return res.status(404).json({ error: 'Monitor not found' });
   }
 
-  await db.delete(monitors).where(eq(monitors.id, req.params.id));
+  const [updated] = await db.update(monitors).set({ name, url })
+    .where(eq(monitors.id, monitorId))
+    .returning();
+
+  res.json(updated);
+});
+
+router.delete('/:id', authenticate, async (req: AuthRequest, res) => {
+  const monitorId = req.params.id as string;
+
+  const [monitor] = await db.select().from(monitors).where(
+    and(eq(monitors.id, monitorId), eq(monitors.userId, req.userId!))
+  );
+
+  if (!monitor) {
+    return res.status(404).json({ error: 'Monitor not found' });
+  }
+
+  await db.delete(monitors).where(eq(monitors.id, monitorId));
   res.status(204).send();
 });
 
