@@ -28,3 +28,7 @@ npm-debug.log*
 
 # TypeScript
 *.tsbuildinfo
+
+# AI agent config
+.agents/
+skills-lock.json

@@ -4,15 +4,17 @@ A self-hosted uptime monitoring service that periodically checks the health of w
 
 ## Features
 
-- **Monitor CRUD** — Create, list, delete monitors
+- **Monitor CRUD** — Create, edit, list, and delete monitors
 - **Periodic health checks** — Background job pings each monitor every 60s
 - **Concurrent execution** — Multiple monitors checked in parallel (10 concurrent)
 - **Timeout-based failure detection** — 5s timeout per check
 - **Debounced incident detection** — 3 consecutive failures = down (avoids false alarms)
-- **Incident history** — Log of down/up transitions with timestamps
-- **Discord webhook alerts** — Fired on status change
+- **Incident history** — Log of down/up transitions with timestamps and duration
+- **Discord + email alerts** — Discord webhook and Resend email on status change
 - **Uptime % calculation** — Rolling 24h and 7d uptime per monitor
-- **Response time history** — Track and visualize response time over time
+- **Response time history** — Area chart with failure markers
+- **60-check sparkline** — Visual per-monitor bar strip showing recent check history
+- **Flight-board dashboard** — Status banner, instrument panels, pulsing LED indicators
 - **Multi-user** — JWT authentication, user-scoped monitors
 
 ## Tech Stack
@@ -29,13 +31,75 @@ A self-hosted uptime monitoring service that periodically checks the health of w
 | Alerts | Discord webhook + Resend (email) |
 | Package Manager | npm |
 
+## Architecture
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│                        BROWSER                                │
+│  ┌────────────┐  ┌────────────┐  ┌────────────────────────┐ │
+│  │ Login / Reg│  │ Dashboard  │  │ Monitor Detail         │ │
+│  │ (auth)     │  │ (board UI) │  │ (chart, incidents)     │ │
+│  └─────┬──────┘  └─────┬──────┘  └───────────┬────────────┘ │
+└────────┼───────────────┼──────────────────────┼──────────────┘
+         │               │  fetch + JWT         │
+         ▼               ▼                      ▼
+┌──────────────────────────────────────────────────────────────┐
+│                    EXPRESS API  (port 3001)                    │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │  auth/*    monitors    checks    incidents    uptime   │  │
+│  └────────────────────────────────────────────────────────┘  │
+│         │                        │                            │
+│         ▼                        ▼                            │
+│  ┌─────────────┐          ┌─────────────┐                    │
+│  │  POSTGRES   │          │    REDIS    │                    │
+│  │  (Neon)     │          │  (Upstash)  │                    │
+│  │  users      │          │  BullMQ     │                    │
+│  │  monitors   │          │  job state  │                    │
+│  │  checks     │          │             │                    │
+│  │  incidents  │          └──────┬──────┘                    │
+│  └─────────────┘                 │                            │
+└──────────────────────────────────┼────────────────────────────┘
+                                   │
+                                   ▼
+┌──────────────────────────────────────────────────────────────┐
+│                  BULLMQ WORKER                                 │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │  Fetch all monitors  →  HTTP check (5s timeout)       │  │
+│  │  10 concurrent  →  Record results  →  Detect incidents│  │
+│  └────────────────────────────────────────────────────────┘  │
+│         │                                                     │
+│         ▼                                                     │
+│  ┌────────────────────────────────────────────────────────┐  │
+│  │              EXTERNAL SERVICES                          │  │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌────────────┐  │  │
+│  │  │  Monitored  │  │  Monitored  │  │  Monitored │  │  │
+│  │  │  Service A  │  │  Service B  │  │  Service C │  │  │
+│  │  └──────────────┘  └──────────────┘  └────────────┘  │  │
+│  │                                                         │  │
+│  │  ┌──────────────────────────────────────────────────┐  │  │
+│  │  │        DISCORD WEBHOOK  +  RESEND EMAIL           │  │  │
+│  │  │     Alerts on down / up transitions               │  │  │
+│  │  └──────────────────────────────────────────────────┘  │  │
+│  └────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────┘
+```
+
+**Three separate processes:**
+1. **Next.js Dashboard** — user-facing UI, port 3000
+2. **Express API** — REST endpoints, port 3001
+3. **BullMQ Worker** — background health checks, no port
+
+All three must run simultaneously in development.
+
 ## Quick Start
 
 ### Prerequisites
 
 - Node.js 18+
-- Neon account (free tier)
-- Upstash account (free tier)
+- Neon account (free tier) — PostgreSQL database
+- Upstash account (free tier) — Redis for BullMQ
+- Discord server (optional) — for webhook alerts
+- Resend account (optional) — for email alerts
 
 ### Setup
 
@@ -45,36 +109,42 @@ A self-hosted uptime monitoring service that periodically checks the health of w
    cd uppy
    ```
 
-2. Install dependencies:
+2. Install dependencies (root + web):
    ```bash
    npm install
+   cd src/web && npm install && cd ../..
    ```
 
 3. Set up environment variables:
    ```bash
    cp .env.example .env
-   # Edit .env with your Neon database URL, Upstash Redis URL, etc.
+   # Edit .env (see Environment Variables below)
    ```
 
 4. Set up the database:
-   - Create a Neon account at neon.tech
-   - Create a new project
-   - Copy the connection string to .env
+   - Create a Neon project at neon.tech
+   - Copy the **direct** connection string (non-pooled) to `.env` as `DATABASE_URL`
    - Run: `npm run db:push`
 
-5. Start the development servers:
+5. Set up alerts (optional):
+   - **Discord:** Server Settings → Integrations → Webhooks → New Webhook → Copy URL → paste as `DISCORD_WEBHOOK_URL`
+   - **Resend:** Sign up at resend.com → API Keys → Create Key → paste as `RESEND_API_KEY`. Set `EMAIL_FROM` to your verified sender address (or `onboarding@resend.dev` for testing)
+
+6. Start the development servers (all three must run simultaneously):
    ```bash
-   # Terminal 1: API server
+   # Terminal 1: API server (port 3001)
    npm run dev:api
 
-   # Terminal 2: Worker
+   # Terminal 2: Worker (BullMQ health checks)
    npm run dev:worker
 
-   # Terminal 3: Dashboard
+   # Terminal 3: Dashboard (port 3000)
    npm run dev:web
    ```
 
-6. Open http://localhost:3000 in your browser
+7. Open http://localhost:3000 in your browser
+
+> **Note:** `tsx watch` does not reload on `.env` changes. Restart the API/worker after editing `.env`.
 
 ## API Endpoints
 
@@ -86,6 +156,7 @@ A self-hosted uptime monitoring service that periodically checks the health of w
 | GET | /api/monitors | List user's monitors |
 | POST | /api/monitors | Create a new monitor |
 | GET | /api/monitors/:id | Get monitor details |
+| PUT | /api/monitors/:id | Update monitor name/URL |
 | DELETE | /api/monitors/:id | Delete a monitor |
 | GET | /api/monitors/:id/checks | Get recent checks |
 | GET | /api/monitors/:id/incidents | Get incident history |
@@ -112,21 +183,51 @@ A self-hosted uptime monitoring service that periodically checks the health of w
 ```
 Uppy/
 ├── docs/
-│   ├── architecture.md        # System overview
+│   ├── architecture.md        # System overview + data flow
 │   ├── api-spec.yaml          # OpenAPI specification
 │   ├── database-schema.sql    # PostgreSQL schema
-│   └── implementation.md      # Detailed build plan
+│   └── implementation.md      # Step-by-step build plan
 ├── src/
-│   ├── api/                   # Express backend (TypeScript)
-│   │   ├── db/                # Drizzle schema + connection
-│   │   ├── routes/            # API routes
-│   │   └── middleware/        # Auth middleware
-│   ├── worker/                # BullMQ worker (TypeScript)
-│   └── web/                   # Next.js dashboard
-├── drizzle/                   # Migration files
+│   ├── api/                   # Express backend
+│   │   ├── db/
+│   │   │   ├── index.ts       # Drizzle client + dotenv config
+│   │   │   └── schema.ts      # Table definitions (users, monitors, checks, incidents)
+│   │   ├── middleware/
+│   │   │   └── auth.ts        # JWT verification middleware
+│   │   ├── routes/
+│   │   │   ├── auth.ts        # POST register, login; GET me
+│   │   │   ├── monitors.ts    # CRUD + PUT edit
+│   │   │   ├── checks.ts      # GET /monitors/:id/checks
+│   │   │   ├── incidents.ts   # GET /monitors/:id/incidents
+│   │   │   └── uptime.ts      # GET /monitors/:id/uptime
+│   │   └── index.ts           # Express app, CORS, BullMQ scheduler
+│   ├── worker/                # BullMQ worker
+│   │   ├── index.ts           # Worker process + check loop
+│   │   ├── queue.ts           # Redis connection + queue setup
+│   │   ├── checker.ts         # HTTP check with timeout
+│   │   └── alerter.ts         # Discord webhook + Resend email
+│   └── web/                   # Next.js dashboard (separate package.json)
+│       └── src/
+│           ├── app/
+│           │   ├── layout.tsx        # Root layout (Chakra Plex + IBM Plex fonts)
+│           │   ├── page.tsx          # Dashboard — status banner + board
+│           │   ├── globals.css       # Tailwind v4 theme tokens + LED pulse
+│           │   ├── login/page.tsx    # Sign-in
+│           │   ├── register/page.tsx # Create account
+│           │   └── monitors/[id]/page.tsx  # Monitor detail
+│           ├── components/
+│           │   ├── AddMonitorForm.tsx
+│           │   ├── EditMonitorForm.tsx
+│           │   ├── MonitorCard.tsx   # Board row + sparkline
+│           │   ├── MonitorDetail.tsx # Detail view orchestrator
+│           │   ├── ResponseTimeChart.tsx  # Area + failure chart
+│           │   └── IncidentList.tsx  # Timeline
+│           └── lib/
+│               └── api.ts           # Typed fetch wrapper + token management
+├── drizzle/                   # Generated migration files
 ├── drizzle.config.ts
-├── package.json
-├── tsconfig.json
+├── package.json               # Root — API + worker scripts
+├── tsconfig.json              # Strict mode, excludes src/web
 ├── .env.example
 └── README.md
 ```
