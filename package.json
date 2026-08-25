@@ -10,6 +10,8 @@
     "dev:api": "tsx watch src/api/index.ts",
     "dev:worker": "tsx watch src/worker/index.ts",
     "dev:web": "cd src/web && npm run dev",
+    "start:api": "tsx src/api/index.ts",
+    "start:worker": "tsx src/worker/index.ts",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio"

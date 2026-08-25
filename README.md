@@ -153,6 +153,7 @@ All three must run simultaneously in development.
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
+| GET | /api/health | Health check (no auth) |
 | POST | /api/auth/register | Register a new user |
 | POST | /api/auth/login | Login and get JWT token |
 | GET | /api/auth/me | Get current user |

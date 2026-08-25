@@ -7,6 +7,7 @@ import checkRoutes from './routes/checks';
 import incidentRoutes from './routes/incidents';
 import uptimeRoutes from './routes/uptime';
 import { healthCheckQueue } from '../worker/queue';
+import '../worker/index';
 
 dotenv.config();
 
@@ -19,6 +20,10 @@ app.use('/api/monitors', monitorRoutes);
 app.use('/api/monitors', checkRoutes);
 app.use('/api/monitors', incidentRoutes);
 app.use('/api/monitors', uptimeRoutes);
+
+app.get('/api/health', (_req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
