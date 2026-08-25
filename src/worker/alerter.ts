@@ -1,7 +1,15 @@
 import 'dotenv/config';
-import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+const transporter = process.env.SMTP_HOST ? nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: parseInt(process.env.SMTP_PORT || '587'),
+  secure: process.env.SMTP_PORT === '465',
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+}) : null;
 
 export async function sendDiscordAlert(monitorName: string, status: 'down' | 'up', url: string) {
   const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
@@ -35,13 +43,13 @@ export async function sendEmailAlert(
   url: string,
   recipientEmail: string
 ) {
-  if (!resend || !process.env.EMAIL_FROM) return;
+  if (!transporter || !process.env.SMTP_FROM) return;
 
   const emoji = status === 'down' ? '\u{1F534}' : '\u{1F7E2}';
   const subject = `${emoji} ${monitorName} is ${status === 'down' ? 'Down' : 'Back Up'}`;
 
-  await resend.emails.send({
-    from: process.env.EMAIL_FROM,
+  await transporter.sendMail({
+    from: process.env.SMTP_FROM,
     to: recipientEmail,
     subject,
     html: `

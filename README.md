@@ -5,12 +5,12 @@ A self-hosted uptime monitoring service that periodically checks the health of w
 ## Features
 
 - **Monitor CRUD** — Create, edit, list, and delete monitors
-- **Periodic health checks** — Background job pings each monitor every 60s
+- **Periodic health checks** — Background job pings each monitor every 5 minutes
 - **Concurrent execution** — Multiple monitors checked in parallel (10 concurrent)
 - **Timeout-based failure detection** — 5s timeout per check
 - **Debounced incident detection** — 3 consecutive failures = down (avoids false alarms)
 - **Incident history** — Log of down/up transitions with timestamps and duration
-- **Discord + email alerts** — Discord webhook and Resend email on status change
+- **Discord + email alerts** — Discord webhook and SMTP email on status change
 - **Uptime % calculation** — Rolling 24h and 7d uptime per monitor
 - **Response time history** — Area chart with failure markers
 - **60-check sparkline** — Visual per-monitor bar strip showing recent check history
@@ -28,7 +28,7 @@ A self-hosted uptime monitoring service that periodically checks the health of w
 | Job Queue | BullMQ + Redis (Upstash) |
 | Frontend | Next.js + Tailwind |
 | Charts | Recharts |
-| Alerts | Discord webhook + Resend (email) |
+| Alerts | Discord webhook + SMTP (email) |
 | Package Manager | npm |
 
 ## Architecture
@@ -77,7 +77,7 @@ A self-hosted uptime monitoring service that periodically checks the health of w
 │  │  └──────────────┘  └──────────────┘  └────────────┘  │  │
 │  │                                                         │  │
 │  │  ┌──────────────────────────────────────────────────┐  │  │
-│  │  │        DISCORD WEBHOOK  +  RESEND EMAIL           │  │  │
+│  │  │        DISCORD WEBHOOK  +  SMTP EMAIL            │  │  │
 │  │  │     Alerts on down / up transitions               │  │  │
 │  │  └──────────────────────────────────────────────────┘  │  │
 │  └────────────────────────────────────────────────────────┘  │
@@ -99,7 +99,7 @@ All three must run simultaneously in development.
 - Neon account (free tier) — PostgreSQL database
 - Upstash account (free tier) — Redis for BullMQ
 - Discord server (optional) — for webhook alerts
-- Resend account (optional) — for email alerts
+- SMTP provider (optional) — Gmail, Outlook, SendGrid, etc. for email alerts
 
 ### Setup
 
@@ -128,7 +128,10 @@ All three must run simultaneously in development.
 
 5. Set up alerts (optional):
    - **Discord:** Server Settings → Integrations → Webhooks → New Webhook → Copy URL → paste as `DISCORD_WEBHOOK_URL`
-   - **Resend:** Sign up at resend.com → API Keys → Create Key → paste as `RESEND_API_KEY`. Set `EMAIL_FROM` to your verified sender address (or `onboarding@resend.dev` for testing)
+   - **Email (SMTP):** Configure SMTP credentials in `.env`:
+     - **Gmail:** Enable 2FA → App Passwords → "Mail" → "Other" → name "Uppy" → paste 16-char code as `SMTP_PASS`
+     - **Other providers:** Use their SMTP host/port/user/pass
+     - Required vars: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`
 
 6. Start the development servers (all three must run simultaneously):
    ```bash
@@ -170,9 +173,12 @@ All three must run simultaneously in development.
 | REDIS_URL | Redis connection string | - |
 | JWT_SECRET | Secret for JWT signing | - |
 | DISCORD_WEBHOOK_URL | Discord webhook for alerts | - |
-| RESEND_API_KEY | Resend API key for email alerts | - |
-| EMAIL_FROM | Sender email address | - |
-| CHECK_INTERVAL_MS | Check interval in ms | 60000 |
+| SMTP_HOST | SMTP server host (e.g., smtp.gmail.com) | - |
+| SMTP_PORT | SMTP server port (587 for STARTTLS, 465 for SSL) | - |
+| SMTP_USER | SMTP username/email | - |
+| SMTP_PASS | SMTP password/app password | - |
+| SMTP_FROM | Sender email address | - |
+| CHECK_INTERVAL_MS | Check interval in ms | 300000 |
 | CHECK_TIMEOUT_MS | Timeout per check in ms | 5000 |
 | FAILURE_THRESHOLD | Consecutive failures before alert | 3 |
 | CONCURRENT_CHECKS | Max parallel checks | 10 |
@@ -205,7 +211,7 @@ Uppy/
 │   │   ├── index.ts           # Worker process + check loop
 │   │   ├── queue.ts           # Redis connection + queue setup
 │   │   ├── checker.ts         # HTTP check with timeout
-│   │   └── alerter.ts         # Discord webhook + Resend email
+│   │   └── alerter.ts         # Discord webhook + SMTP email
 │   └── web/                   # Next.js dashboard (separate package.json)
 │       └── src/
 │           ├── app/

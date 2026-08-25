@@ -54,7 +54,7 @@ After shipping backend/AI services to production, there's no visibility into whe
 
 ### Must-Have (v1 — buildable in 1 week)
 1. **Monitor CRUD** — create, list, delete monitors (name + URL)
-2. **Scheduled checker** — background job pings each monitor on a fixed interval (hardcoded, e.g. 60s)
+2. **Scheduled checker** — background job pings each monitor on a fixed interval (hardcoded, e.g. 5 minutes)
 3. **Concurrent execution** — job queue processes multiple checks in parallel (hardcoded concurrency, e.g. 10)
 4. **Timeout-based failure detection** — hardcoded timeout (e.g. 5–10s)
 5. **Debounced incident detection** — hardcoded threshold (e.g. 3 consecutive failures = down)

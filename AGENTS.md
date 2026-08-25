@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Self-hosted uptime monitoring service. Checks web services periodically, tracks response times, detects incidents, alerts via Discord + email (Resend).
+Self-hosted uptime monitoring service. Checks web services periodically, tracks response times, detects incidents, alerts via Discord + email (SMTP).
 
 **Status:** Documentation/planning phase — no code yet. Follow `docs/implementation.md` to build.
 
@@ -15,7 +15,7 @@ Self-hosted uptime monitoring service. Checks web services periodically, tracks 
 - **Job Queue:** BullMQ + Redis (Upstash free tier)
 - **Frontend:** Next.js + Tailwind + Recharts
 - **Auth:** JWT (7-day expiry, no refresh tokens in v1)
-- **Alerts:** Discord webhook + Resend email
+- **Alerts:** Discord webhook + SMTP email (Nodemailer)
 - **Package Manager:** npm
 
 ## Architecture
@@ -75,7 +75,7 @@ JWT in `Authorization: Bearer <token>` header. Middleware extracts `userId`, att
 
 ## Worker Pattern
 
-BullMQ repeatable job every 60s. Fetches all monitors, checks concurrently (limit 10), records results. 3 consecutive failures = incident + alert. Recovery resolves incident + alert.
+BullMQ repeatable job every 5 minutes. Fetches all monitors, checks concurrently (limit 10), records results. 3 consecutive failures = incident + alert. Recovery resolves incident + alert.
 
 ## Docs Location
 

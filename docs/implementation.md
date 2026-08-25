@@ -39,7 +39,7 @@ Edit `package.json`:
 
 ```bash
 # Backend
-npm install express bcrypt jsonwebtoken dotenv drizzle-orm postgres bullmq ioredis resend uuid
+npm install express bcrypt jsonwebtoken dotenv drizzle-orm postgres bullmq ioredis nodemailer uuid
 
 # Dev dependencies
 npm install -D typescript @types/express @types/bcrypt @types/jsonwebtoken @types/uuid tsx drizzle-kit
@@ -86,7 +86,7 @@ cp .env.example .env
 - **Neon** (PostgreSQL): Sign up at neon.tech, create project, copy connection string
 - **Upstash** (Redis): Sign up at upstash.com, create Redis database, copy URL
 - **Discord** (optional): Create webhook in server settings
-- **Resend** (optional): Sign up at resend.com for email alerts
+- **SMTP Provider** (optional): Gmail, Outlook, SendGrid, etc. for email alerts
 
 ### Verification
 
@@ -572,9 +572,18 @@ export async function performCheck(url: string, timeoutMs: number): Promise<Chec
 ### Step 4.3: Create alerter — `src/worker/alerter.ts`
 
 ```typescript
-import { Resend } from 'resend';
+import 'dotenv/config';
+import nodemailer from 'nodemailer';
 
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+const transporter = process.env.SMTP_HOST ? nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: parseInt(process.env.SMTP_PORT || '587'),
+  secure: process.env.SMTP_PORT === '465',
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+}) : null;
 
 export async function sendDiscordAlert(monitorName: string, status: 'down' | 'up', url: string) {
   const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
@@ -606,13 +615,13 @@ export async function sendEmailAlert(
   url: string,
   recipientEmail: string
 ) {
-  if (!resend || !process.env.EMAIL_FROM) return;
+  if (!transporter || !process.env.SMTP_FROM) return;
 
   const emoji = status === 'down' ? '🔴' : '🟢';
   const subject = `${emoji} ${monitorName} is ${status === 'down' ? 'Down' : 'Back Up'}`;
   
-  await resend.emails.send({
-    from: process.env.EMAIL_FROM,
+  await transporter.sendMail({
+    from: process.env.SMTP_FROM,
     to: recipientEmail,
     subject,
     html: `
@@ -723,7 +732,7 @@ console.log('Worker started, listening for health-checks jobs');
 import { healthCheckQueue } from '../worker/queue';
 
 // After app.listen
-const CHECK_INTERVAL_MS = parseInt(process.env.CHECK_INTERVAL_MS || '60000');
+const CHECK_INTERVAL_MS = parseInt(process.env.CHECK_INTERVAL_MS || '300000');
 
 healthCheckQueue.add('health-check', {}, {
   repeat: { every: CHECK_INTERVAL_MS },

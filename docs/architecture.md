@@ -64,7 +64,7 @@
 │                     BULLMQ WORKER                                │
 │                                                                  │
 │  ┌─────────────────────────────────────────────────────────┐    │
-│  │  - Polls monitors on interval (60s)                      │    │
+│  │  - Polls monitors on interval (5 minutes)                      │    │
 │  │  - Executes HTTP checks concurrently (10 parallel)       │    │
 │  │  - Records results to checks table                       │    │
 │  │  - Detects incidents (3 consecutive failures)            │    │
@@ -81,7 +81,7 @@
 │  │  └──────────────┘    └──────────────┘    └────────────┘ │    │
 │  │                                                          │    │
 │  │  ┌──────────────────────────────────────────────────┐   │    │
-│  │  │           DISCORD WEBHOOK + EMAIL (Resend)        │   │    │
+│  │  │           DISCORD WEBHOOK + EMAIL (SMTP)        │   │    │
 │  │  │    Sends alerts on up→down / down→up transitions  │   │    │
 │  │  └──────────────────────────────────────────────────┘   │    │
 │  └─────────────────────────────────────────────────────────┘    │
@@ -92,7 +92,7 @@
 
 ### Health Check Flow
 ```
-1. BullMQ scheduler triggers job every 60s
+1. BullMQ scheduler triggers job every 5 minutes
 2. Worker fetches due monitors from database
 3. Worker executes HTTP GET with 5s timeout (10 concurrent)
 4. Results written to checks table
@@ -124,7 +124,7 @@
 | **JWT over sessions** | Stateless, simple for API, no server-side session store needed |
 | **BullMQ over cron** | Built-in concurrency control, retries, job state, Redis-backed |
 | **Debounced alerts** | Avoids false positives from single blips (3 consecutive failures) |
-| **Discord + Email alerts** | Discord for instant notifications, Resend for email alerts |
+| **Discord + Email alerts** | Discord for instant notifications, SMTP (Nodemailer) for email alerts |
 | **User-scoped monitors** | Each user sees only their own monitors (user_id FK) |
 | **Cascading deletes** | Deleting user removes their monitors, checks, and incidents |
 
@@ -154,7 +154,7 @@
 │  │  Features:        │           │  ┌─────────────┐  │          │
 │  │  - Dashboard      │           │  │  BullMQ     │  │          │
 │  │  - Monitor list   │           │  │  Worker     │  │          │
-│  │  - Monitor detail │           │  │  (60s jobs) │  │          │
+│  │  - Monitor detail │           │  │  (5 min jobs) │  │          │
 │  │  - Auth pages     │           │  └─────────────┘  │          │
 │  └─────────┬─────────┘           └─────────┬─────────┘          │
 │            │                               │                     │
@@ -171,7 +171,7 @@
 │  │  └──────────────┘    └──────────────┘    └────────────┘ │    │
 │  │                                                          │    │
 │  │  ┌──────────────────────────────────────────────────┐   │    │
-│  │  │           DISCORD WEBHOOK + EMAIL (Resend)        │   │    │
+│  │  │           DISCORD WEBHOOK + EMAIL (SMTP)        │   │    │
 │  │  │    Sends alerts on up→down / down→up transitions  │   │    │
 │  │  └──────────────────────────────────────────────────┘   │    │
 │  └─────────────────────────────────────────────────────────┘    │
